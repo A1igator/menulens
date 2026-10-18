@@ -1,0 +1,62 @@
+{
+  "name": "@menulens/server",
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "version": "1.0.0",
+  "description": "Location-aware menu understanding for ChatGPT and agents",
+  "author": "mcp-use",
+  "license": "MIT",
+  "homepage": "https://github.com/mcp-use/mcp-use",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "chatgpt plugins",
+    "claude connector",
+    "mcp-app",
+    "mcp-use",
+    "manufact"
+  ],
+  "scripts": {
+    "build": "npm run preview:build && mcp-use build",
+    "dev": "npm run preview:build && mcp-use dev",
+    "start": "mcp-use start",
+    "deploy": "mcp-use deploy",
+    "typecheck": "mcp-use typecheck",
+    "test": "MENULENS_MODE=fixture MENULENS_STORE=memory node --import tsx --test tests/*.test.ts",
+    "demo": "node --import tsx scripts/demo.ts",
+    "migrate": "node --import tsx scripts/migrate.ts",
+    "preview:build": "vite build --config vite.preview.config.ts",
+    "db:runtime": "node --import tsx scripts/setup-runtime.ts",
+    "db:check": "node --import tsx scripts/check-cloud-db.ts",
+    "wallet:init": "node --import tsx scripts/wallet.ts"
+  },
+  "dependencies": {
+    "@x402/core": "^2.28.0",
+    "@x402/evm": "^2.28.0",
+    "@x402/fetch": "^2.28.0",
+    "dotenv": "^18.0.8",
+    "hono": "^4.13.13",
+    "mcp-use": "2.10.1",
+    "pg": "^8.23.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "viem": "^2.57.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  },
+  "overrides": {
+    "@mcp-use/cli": "4.4.0"
+  }
+}

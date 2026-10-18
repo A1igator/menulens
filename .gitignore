@@ -1,0 +1,15 @@
+node_modules/
+.tools/
+dist/
+.mcp-use/
+.expo/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+*.apk
+*.aab
+.DS_Store
+.claude/
+artifacts/

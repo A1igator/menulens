@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+public/demo/
+.pnpm-store/
+
+# Build output
+dist/
+.mcp-use/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+artifacts/
+
+# Linting
+.eslintcache
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf

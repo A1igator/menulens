@@ -1,0 +1,12 @@
+{
+  "name": "menulens",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/server run dev",
+    "build": "npm --prefix apps/server run build",
+    "test": "npm --prefix apps/server test",
+    "typecheck": "npm --prefix apps/server run typecheck",
+    "demo": "npm --prefix apps/server run demo",
+    "mobile": "npm --prefix apps/mobile start"
+  }
+}

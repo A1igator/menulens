@@ -1,0 +1,23 @@
+name: Check MenuLens
+on: [push, pull_request]
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: npm, cache-dependency-path: apps/server/package-lock.json }
+      - run: npm ci
+        working-directory: apps/server
+      - run: npm test && npm run typecheck && npm run build
+        working-directory: apps/server
+  android-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: npm, cache-dependency-path: apps/mobile/package-lock.json }
+      - run: npm ci
+        working-directory: apps/mobile
+      - run: npm run typecheck && npm run lint && npx expo export --platform android
+        working-directory: apps/mobile

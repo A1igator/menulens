@@ -1,0 +1,23 @@
+name: Minimal MenuLens companion
+
+jobs:
+  native_base:
+    type: get-build
+    params:
+      platform: android
+      profile: preview
+      fingerprint_hash: abb56857e91b9b4cb1013df034f04a8a01e22902
+      wait_for_in_progress: true
+  companion:
+    needs: [native_base]
+    if: ${{ needs.native_base.outputs.build_id }}
+    type: repack
+    environment: preview
+    env:
+      EXPO_PUBLIC_API_URL: https://fast-pulse-1232h.run.mcp-use.com
+    params:
+      build_id: ${{ needs.native_base.outputs.build_id }}
+      profile: preview
+      embed_bundle_assets: true
+      js_bundle_only: true
+      message: Minimal ChatGPT pairing companion
