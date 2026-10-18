@@ -19,6 +19,7 @@ export function MenuPanel({ initial }: { initial: ViewData }) {
   const visible = dishes.slice(0, shown);
   const remaining = dishes.length - visible.length;
   const partial = /partial|omitted/i.test(initial.note ?? "");
+  const focused = initial.display === "shortlist" || initial.display === "dish_details";
   const sourceUrl = initial.sourceUrl && !initial.sourceUrl.includes("menulens.invalid") ? initial.sourceUrl : undefined;
   return <main className="menulens">
     <header className="topline">
@@ -33,6 +34,7 @@ export function MenuPanel({ initial }: { initial: ViewData }) {
       <span>Then tap Share location. Code expires in 5 minutes.</span>
     </section>}
     {initial.dishes && <section className="menu-section">
+      {focused && <p className="selection-label">{initial.selectionLabel ?? "Your options"}</p>}
       <h2>{initial.restaurant?.name ?? "Your menu"}</h2>
       <div className="dish-list">
         {visible.map((dish) => <article className="dish" key={dish.id}>
@@ -71,7 +73,7 @@ export function MenuPanel({ initial }: { initial: ViewData }) {
           {remaining > 0 && <button className="more" onClick={() => setShown((count) => count + PAGE_SIZE)}>Show {Math.min(PAGE_SIZE, remaining)} more <span aria-hidden="true">↓</span></button>}
           {shown > PAGE_SIZE && <button className="less" onClick={() => setShown(PAGE_SIZE)}>Show less</button>}
         </div>
-        <span className="count" role="status">{visible.length} of {dishes.length}</span>
+        <span className="count" role="status">{focused ? `${visible.length} ${visible.length === 1 ? "dish" : "dishes"} selected` : `${visible.length} of ${dishes.length}`}</span>
       </div>}
       <footer className="menu-footer">
         <span>{partial ? "Partial menu · " : ""}Confirm allergens with the restaurant.</span>

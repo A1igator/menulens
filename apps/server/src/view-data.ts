@@ -24,6 +24,11 @@ export const viewDataSchema = z.object({
   mode: z.enum(["fixture", "live"]),
   status: z.string(),
   note: z.string().optional(),
+  originalRequest: z.string().optional(),
+  fullMenuAllowed: z.boolean().optional(),
+  responseGuidance: z.string().optional(),
+  display: z.enum(["shortlist", "dish_details", "full_menu"]).optional(),
+  selectionLabel: z.string().optional(),
   pairing: z
     .object({
       readHandle: z.string(),
@@ -41,6 +46,7 @@ export const viewDataSchema = z.object({
     })
     .optional(),
   restaurants: z.array(restaurantSchema).optional(),
+  lookup: z.object({kind:z.enum(["nearby","by_name"]),locationUpdatedAt:z.number().optional(),radiusMetres:z.number().optional()}).optional(),
   restaurant: restaurantSchema.optional(),
   menuId: z.string().optional(),
   dishes: z.array(explainedSchema).optional(),

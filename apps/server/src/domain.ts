@@ -72,6 +72,7 @@ export type Fix = {
 };
 export type Session = {
   id: string;
+  ownerId?: string;
   codeHash: string;
   readHash: string;
   writeHash: string | null;

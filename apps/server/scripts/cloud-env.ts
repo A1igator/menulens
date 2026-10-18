@@ -5,7 +5,7 @@ import { parse } from "dotenv";
 const server = "8bca249a-8d63-4304-98b2-f5eaef2270f0";
 const vars = parse(await readFile(".env.manufact"));
 for (const [key, value] of Object.entries(vars)) {
-  const secret = key === "INSFORGE_DATABASE_URL" || key === "X402_PRIVATE_KEY";
+  const secret = ["INSFORGE_DATABASE_URL","X402_PRIVATE_KEY","MCP_USE_OAUTH_SECRET","INSFORGE_ANON_KEY"].includes(key);
   try {
     execFileSync(
       "npx",

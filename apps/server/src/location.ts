@@ -18,7 +18,7 @@ export class LocationService {
     private store: Store,
     private clock = Date.now,
   ) {}
-  async start() {
+  async start(ownerId?: string) {
     const now = this.clock(),
       readHandle = secret();
     const pairingCode = Array.from(
@@ -27,6 +27,7 @@ export class LocationService {
     ).join("");
     const session: Session = {
       id: randomUUID(),
+      ...(ownerId ? {ownerId} : {}),
       codeHash: digest(pairingCode),
       readHash: digest(readHandle),
       writeHash: null,
@@ -86,19 +87,22 @@ export class LocationService {
     await this.store.stop(digest(token));
     return { stopped: true };
   }
-  private async session(handle: string) {
+  private async session(handle?: string, ownerId?: string) {
     await this.store.purge(this.clock());
-    const session = await this.store.read(digest(handle));
+    if (!ownerId && !handle) throw new AppError("pairing_required", "This chat is not connected to a phone. Sign in to MenuLens to reuse your account's phone, or start pairing in this conversation. Never substitute a restaurant remembered from another chat.");
+    const session = ownerId ? await this.store.readForOwner(ownerId) : await this.store.read(digest(handle!));
     if (!session)
       throw new AppError(
         "invalid_context",
-        "This location context is unavailable. Pair your phone again.",
+        ownerId ? "No phone is paired to this MenuLens account. Start pairing once, then use the same account in any chat." : "This chat's phone connection is unavailable. Pair in this conversation or sign in for automatic reconnect.",
         401,
       );
+    if (session.ownerId && session.ownerId !== ownerId)
+      throw new AppError("authentication_required", "Sign in to the MenuLens account that owns this phone connection.",401);
     return session;
   }
-  async status(handle: string) {
-    const s = await this.session(handle),
+  async status(handle?: string, ownerId?: string) {
+    const s = await this.session(handle, ownerId),
       now = this.clock();
     const state =
       s.state !== "sharing"
@@ -117,8 +121,9 @@ export class LocationService {
       expiresAt: s.shareExpires ?? s.pairExpires,
     };
   }
-  async currentFix(handle: string): Promise<Fix> {
-    const s = await this.session(handle);
+  async currentFix(handle?: string, ownerId?: string): Promise<Fix> {
+    const s = await this.session(handle, ownerId);
+    if (s.state === "stopped" || s.state === "expired") throw new AppError("sharing_ended", "Phone sharing has stopped or reached its two-hour limit. Start a new pairing and explicitly enable sharing in the Android companion.");
     if (
       s.state !== "sharing" ||
       !s.fix ||

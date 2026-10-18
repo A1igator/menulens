@@ -99,6 +99,7 @@ try {
   const found = palm ? {restaurants:[{id:"ChIJZ-2Jug9_j4ARcS2_6s5KCNs",name:"The Palm Court at RH San Francisco",address:"590 20th Street"}]} : await menus.find(
     undefined,
     "Souvla 517 Hayes Street San Francisco",
+    undefined, "by_name",
   );
   const restaurant = found.restaurants.find(
     (r) => palm || (/souvla/i.test(r.name) && /hayes/i.test(r.address)),

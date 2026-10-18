@@ -19,7 +19,7 @@ try {
     : JSON.parse(await readFile("artifacts/phone-pairing.json", "utf8"));
   const response = await client.callTool({
     name: start ? "start_pairing" : menu ? "get_menu" : nearby ? "find_restaurants" : "get_location_status",
-    arguments: start ? {} : menu ? {restaurantId:"ChIJZ-2Jug9_j4ARcS2_6s5KCNs",confirmed:true,...(menuUrl ? {menuUrl} : {})} : { readHandle: previous.readHandle },
+    arguments: start ? {} : menu ? {restaurantId:"ChIJZ-2Jug9_j4ARcS2_6s5KCNs",confirmed:true,originalRequest:"Retrieve the published menu for inspection.",...(menuUrl ? {menuUrl} : {})} : { readHandle: previous.readHandle },
   });
   const data = viewDataSchema.parse(response.structuredContent);
   if (response.isError)

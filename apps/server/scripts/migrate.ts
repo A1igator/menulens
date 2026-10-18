@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import pg from "pg";
 if (!process.env.INSFORGE_DATABASE_URL)
   throw new Error(
@@ -11,12 +11,10 @@ const client = new pg.Client({
 try {
   await client.connect();
   await client.query("begin");
-  await client.query(
-    await readFile(
-      new URL("../migrations/20261017200000_initial.sql", import.meta.url),
-      "utf8",
-    ),
-  );
+  const directory = new URL("../migrations/", import.meta.url);
+  for (const file of (await readdir(directory)).filter((file) => file.endsWith(".sql")).sort()) {
+    await client.query(await readFile(new URL(file,directory),"utf8"));
+  }
   await client.query("commit");
   console.info("MenuLens tables are ready.");
 } finally {

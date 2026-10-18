@@ -16,6 +16,8 @@ test("Postgres migration and adapter implement pairing, monotonic fixes, deletio
   );
   await db.exec(sql);
   await db.exec(sql); // Idempotent migration.
+  const accounts = await readFile(new URL("../migrations/20261018040000_accounts.sql",import.meta.url),"utf8");
+  await db.exec(accounts); await db.exec(accounts);
   const store = new PostgresStore("postgres://unused");
   const query = async (text: string, values?: unknown[]) => {
     const r = await db.query(text, values);
@@ -73,6 +75,17 @@ test("Postgres migration and adapter implement pairing, monotonic fixes, deletio
     now += DAY;
     await store.purge(now);
     assert.equal(await store.read(digest(second.readHandle)), null);
+    const owner="11111111-1111-4111-8111-111111111111";
+    const owned=await location.start(owner), old=await location.claim(owned.pairingCode);
+    await location.upload(old.deviceToken,{latitude:37,longitude:-122,accuracy:5,observedAt:now});
+    assert.equal((await location.status(undefined,owner)).state,"ready");
+    await assert.rejects(location.status(owned.readHandle),/Sign in/);
+    await assert.rejects(location.status(owned.readHandle,"22222222-2222-4222-8222-222222222222"));
+    now++;
+    const replacement=await location.start(owner), current=await location.claim(replacement.pairingCode);
+    await assert.rejects(location.upload(old.deviceToken,{latitude:37,longitude:-122,accuracy:5,observedAt:now}),/ended/);
+    await location.upload(current.deviceToken,{latitude:38,longitude:-122,accuracy:5,observedAt:now});
+    assert.equal((await location.currentFix(undefined,owner)).latitude,38);
   } finally {
     await store.close();
   }

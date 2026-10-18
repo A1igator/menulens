@@ -4,6 +4,10 @@ const envSchema = z.object({
   MENULENS_MODE: z.enum(["fixture", "live"]).default("fixture"),
   MENULENS_STORE: z.enum(["memory", "postgres"]).optional(),
   PUBLIC_BASE_URL: z.url().default("http://localhost:3000"),
+  MENULENS_AUTH: z.enum(["disabled", "insforge"]).optional(),
+  INSFORGE_URL: z.url().optional(),
+  INSFORGE_ANON_KEY: z.string().optional(),
+  MCP_USE_OAUTH_SECRET: z.string().min(32).optional(),
   MAX_CALL_USD: z.coerce.number().positive().max(0.1).default(0.1),
   MAX_WORKFLOW_USD: z.coerce.number().positive().max(0.5).default(0.5),
   MAX_DAILY_USD: z.coerce.number().positive().max(10).default(10),
@@ -15,9 +19,14 @@ const envSchema = z.object({
   X402_PRIVATE_KEY: z.string().optional(),
 });
 export function loadConfig(env = process.env) {
-  const config = envSchema.parse(
+  const parsed = envSchema.parse(
     Object.fromEntries(Object.entries(env).filter(([, v]) => v !== "")),
   );
+  const config = {...parsed, MENULENS_AUTH:parsed.MENULENS_AUTH ?? (parsed.MENULENS_MODE === "live" ? "insforge" as const : "disabled" as const)};
+  if (config.MENULENS_AUTH === "insforge") {
+    for (const key of ["INSFORGE_DATABASE_URL","INSFORGE_URL","INSFORGE_ANON_KEY","MCP_USE_OAUTH_SECRET"] as const)
+      if (!config[key]) throw new Error(`Account sign-in requires ${key}.`);
+  }
   if (
     (config.MENULENS_MODE === "live" || config.MENULENS_STORE === "postgres") &&
     !config.INSFORGE_DATABASE_URL

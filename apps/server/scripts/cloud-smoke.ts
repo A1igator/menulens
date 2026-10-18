@@ -84,6 +84,7 @@ try {
     throw new Error("Location privacy/status failed.");
   const places = await call("find_restaurants", {
     query: "Souvla 517 Hayes Street San Francisco",
+    searchMode: "by_name",
   });
   const chosen = places.restaurants?.find(
     (r) => r.id === "ChIJbTB3bKKAhYAR8Yqc6dEIMbQ",
@@ -92,11 +93,15 @@ try {
   const menu = await call("get_menu", {
     restaurantId: chosen.id,
     confirmed: true,
+    originalRequest: "Find vegetarian options avoiding sesame.",
   });
   if (!menu.cached || menu.costUsd !== 0)
     throw new Error("The live sample cache was not used.");
   const explained = await call("explain_dishes", {
     menuId: menu.menuId,
+    originalRequest: "Find vegetarian options avoiding sesame.",
+    dishIds: menu.dishes!.slice(0,3).map(dish=>dish.id),
+    selectionLabel: "Vegetarian options",
     preferences: { diets: ["vegetarian"], avoid: ["sesame"] },
   });
   if (!explained.dishes?.length)

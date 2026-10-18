@@ -40,17 +40,19 @@ npm run build:android
 
 Install the **preview APK** from the EAS build result. The preview build includes its JavaScript bundle; it does not require a running Metro server. The development profile is also available. **Expo Go does not support this background-location flow.**
 
-In ChatGPT call `start_pairing`, enter the eight-character code in the companion, then tap **Share location**. Grant foreground location, notifications, and “Allow all the time” background location when requested. Return to ChatGPT and ask MenuLens to find your restaurant. Confirm the restaurant in chat before reading its menu.
+Sign in to MenuLens through the ChatGPT connection first. The configured personal demo connector is **MenuLens Connected**. In ChatGPT call `start_pairing`, enter the eight-character code in the companion, then tap **Share location**. Grant foreground location, notifications, and “Allow all the time” background location when requested. Return to ChatGPT and ask MenuLens to find your restaurant. The same signed-in account reuses its phone across new chats while sharing remains active. Confirm the restaurant in chat before reading its menu.
 
 The foreground-service notification opens the app’s stop-sharing screen. Sharing expires two hours after pairing. Android controls delivery frequency; force-stop ends updates. Fixes older than five minutes are rejected for nearby lookup. GPS alone never confirms which restaurant you are inside.
 
 The companion’s main screen only handles pairing and sharing. Server settings, manual refresh, and diagnostics are under **Connection details**. Restaurant selection, dish cards, dietary preferences, and explanations stay in ChatGPT.
 
-Chat is the main interface: restaurant search, selection, dietary preferences, fallback URLs/text and follow-up questions happen in the conversation. The widget displays a compact list of four dishes. Tap a dish to expand ingredients, dietary evidence, meal balance and sources; **Show more** reveals another small batch. A single source link and collapsed menu notes keep the main view quiet. It has no search boxes, preference forms, filters or navigation tools. Restaurant lookup and phone status return chat-only results. Real dish photos appear only when an image on the published menu page has an exact matching dish caption; otherwise cards have no image. Photos include source links and load through a bounded public-image proxy; generated or generic category artwork is excluded. Photos already present on a menu page require no image-provider purchase. All structured menu data remains available to headless clients.
+Chat is the main interface: restaurant search, selection, dietary preferences, fallback URLs/text and follow-up questions happen in the conversation. Restaurant selection continues the original task. For example, “what is healthy here?” leads directly to a shortlist of up to three balanced options after confirmation, without printing the whole menu. Dietary, budget and dish-explanation requests keep their own context. Menu retrieval is an internal step; one result card displays only the relevant selected dishes. The full menu is shown only when explicitly requested, in batches of four. Tap a dish to expand ingredients, dietary evidence, meal balance and sources; **Show more** reveals another small batch when browsing the full menu. A single source link and collapsed menu notes keep the main view quiet. It has no search boxes, preference forms, filters or navigation tools. Restaurant lookup and phone status return chat-only results. Real dish photos appear only when an image on the published menu page has an exact matching dish caption; otherwise cards have no image. Photos include source links and load through a bounded public-image proxy; generated or generic category artwork is excluded. Photos already present on a menu page require no image-provider purchase. All structured menu data remains available to headless clients. `get_menu` requires the quoted `originalRequest` and returns internal data with no widget. `explain_dishes` carries that request forward and requires 1–3 ordered dish IDs for its default shortlist; `display: full_menu` explicitly enables full browsing. The request and dietary preferences are not saved as a profile.
 
 For later JavaScript-only UI edits, `npx eas-cli@latest workflow:run .eas/workflows/companion-ui.yml` reuses the matching native build and signs a new APK. Recalculate the native fingerprint and do a full build if dependencies, config plugins, permissions, or the Expo SDK change.
 
 For a local phone test, bind the server with `HOST=0.0.0.0 npm run dev`, use the computer’s LAN address, and run a development client on the same network. HTTP is permitted only in development builds; use HTTPS for the standalone APK. Do not expose the development server directly to the public internet.
+
+For automatic phone reuse across chats and secure deployment setup, see [account linking](docs/AUTH.md). Sharing still expires after two hours.
 
 ## Enable live mode
 
@@ -58,7 +60,9 @@ Copy `apps/server/.env.example` to `apps/server/.env` and configure:
 
 | Setting | Purpose |
 | --- | --- |
-| `MENULENS_MODE=live` | Requires actual providers; fails closed when credentials are missing |
+| `MENULENS_MODE=live` | Requires actual providers and account sign-in; fails closed when credentials are missing |
+| `INSFORGE_URL`, `INSFORGE_ANON_KEY` | InsForge email-code authentication |
+| `MCP_USE_OAUTH_SECRET` | Persistent, server-only OAuth encryption/signing secret |
 | `INSFORGE_DATABASE_URL` | TLS-enabled Postgres connection for a dedicated server role with grants limited to the `public.menulens_*` app tables |
 | `MENULENS_INFERENCE=x402` | Default: per-call inference through AgentData, with no model API account |
 | `INSFORGE_AI_API_KEY` | Optional gateway alternative: InsForge/OpenRouter key, with `MENULENS_INFERENCE=gateway` |
@@ -108,7 +112,7 @@ npx mcp-use deploy --no-github --name menulens --env HOST=0.0.0.0 --build-comman
 
 These helpers target this already-provisioned Manufact server. The first prepares an ignored, whitelisted deployment file; the second explicitly writes the DB credential and wallet key with `--secret` so they remain write-only. It never publishes the admin DB credential. The CLI uploads source while excluding `.env` files. Subsequent deploys inherit the stored environment; avoid passing secrets with `deploy --env-file`, which does not mark them write-only. For a separate copy, create its server first and update the helpers’ server ID and public URL. The configured deployment uses InsForge for persistent pairing; the local fixture default remains in-memory unless `MENULENS_STORE=postgres` is set.
 
-Add the deployed **`https://…/mcp`** endpoint in ChatGPT developer mode. Five tools expose structured results. Pairing, menu retrieval and dish explanation use three interactive views with a shared panel implementation; restaurant lookup and location status stay in chat. A real ChatGPT account is needed to verify native card rendering; the local browser preview and headless protocol test do not replace that check.
+Add the deployed **`https://…/mcp`** endpoint in ChatGPT developer mode with **OAuth**. In Advanced OAuth settings, select **Dynamic Client Registration (DCR)** and keep the discovered `menulens:phone` scope; this is the verified ChatGPT configuration. Complete email-code sign-in and pair once. See [account setup and validation](docs/AUTH.md). Live mode exposes six tools, including the authenticated account profile; fixture mode exposes the original five tools. Pairing, menu retrieval and dish explanation use three interactive views with a shared panel implementation; restaurant lookup and location status stay in chat. A real ChatGPT account is needed to verify native card rendering; the local browser preview and headless protocol test do not replace that check.
 
 OpenAI’s current plugin guidelines discourage precise location collection through tools. This companion architecture is a developer-mode hackathon demonstration; **public-directory eligibility has not been established**.
 
@@ -125,6 +129,8 @@ npx expo export --platform android
 ```
 
 See [device acceptance checklist](docs/VALIDATION.md) and [prize/demo notes](docs/SUBMISSION.md).
+
+The prepared two-minute narrated submission edit is saved locally as `artifacts/MenuLens-demo.mp4`, with captions and the two-sentence submission description in [demo video notes](docs/DEMO-VIDEO.md). Captures and video outputs are ignored by Git; the reproducible assembly script is `scripts/render-demo.py`.
 
 The MCP template’s `mcp-use@2.10.1` referenced an unavailable `@mcp-use/cli@4.4.1` tarball during installation. The server locks and overrides that CLI to **4.4.0**, which builds and runs successfully. Both applications have lockfiles.
 

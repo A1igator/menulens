@@ -33,6 +33,7 @@
     "wallet:init": "node --import tsx scripts/wallet.ts"
   },
   "dependencies": {
+    "@insforge/sdk": "^1.5.2",
     "@x402/core": "^2.28.0",
     "@x402/evm": "^2.28.0",
     "@x402/fetch": "^2.28.0",

@@ -74,9 +74,13 @@ try {
     const menu = await call("get_menu", {
       restaurantId: restaurant.id,
       confirmed: true,
+      originalRequest: "Find vegetarian options avoiding sesame.",
     });
     const explained = await call("explain_dishes", {
       menuId: menu.menuId,
+      originalRequest: "Find vegetarian options avoiding sesame.",
+      dishIds: menu.dishes!.slice(0, 3).map(d=>d.id),
+      selectionLabel: "Vegetarian options",
       preferences: { diets: ["vegetarian"], avoid: ["sesame"] },
     });
     if (!explained.dishes?.length) throw new Error("No dishes returned");
