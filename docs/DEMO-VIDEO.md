@@ -1,6 +1,6 @@
 # Two-minute submission video
 
-Output: `artifacts/MenuLens-demo.mp4` (1920 × 1080, exactly two minutes).
+Output: `artifacts/MenuLens-demo.mp4` (1920 × 1080, exactly 120.000 seconds, approximately 3.9 MB). The finished H.264/AAC export has burned-in captions, an additional subtitle track and a separate `artifacts/MenuLens-demo.srt`. Full-file decode completed without errors; the shortlist, expanded ingredient details, dietary labels, caption layout and architecture frames were visually checked.
 
 The edit uses captured ChatGPT interactions, synthesized narration and captions. The nearby results are from the physical Android phone acceptance session; the restaurant menu is a real cached published menu, not a fixture. Opening a cached menu does not claim current GPS or current availability. The Android connection diagram explains the implemented flow; it is not a recording of a new phone pairing.
 
