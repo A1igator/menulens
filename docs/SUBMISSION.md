@@ -32,6 +32,6 @@
 5. Ask a dietary follow-up in chat. Harlequin's dairy-free check shows explicit goat-cheese conflict and honest uncertainty for unlabelled dishes. These are demonstration preferences, not a saved profile.
 6. Explain the same structured tools for headless agents, the InsForge backend and capped x402 retrieval/inference. Full-menu browsing remains available on explicit request.
 
-The prepared two-minute edit and submission description are documented in [DEMO-VIDEO.md](DEMO-VIDEO.md). The MP4, captions and original captures are local under ignored `artifacts/`; the video does not pretend the recorded nearby lookup is a new GPS fix.
+The product screen recording (under two minutes) and submission description are documented in [DEMO-VIDEO.md](DEMO-VIDEO.md). The MP4 and original captures are local under ignored `artifacts/`. The latest recording uses a fresh phone fix and live nearby lookup, followed by the real cached menu; the earlier presentation-style edit is superseded.
 
 If live data or venue Wi-Fi fails, explicitly switch to **sourced fixture mode** and demonstrate sweetgreen, Souvla, and Tacolicious. Never present those menus as live restaurant availability.
