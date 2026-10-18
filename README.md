@@ -130,6 +130,8 @@ npx expo export --platform android
 
 See [device acceptance checklist](docs/VALIDATION.md) and [prize/demo notes](docs/SUBMISSION.md).
 
+The prepared two-minute narrated submission edit is saved locally as `artifacts/MenuLens-demo.mp4`, with captions and the two-sentence submission description in [demo video notes](docs/DEMO-VIDEO.md). Captures and video outputs are ignored by Git; the reproducible assembly script is `scripts/render-demo.py`.
+
 The MCP template’s `mcp-use@2.10.1` referenced an unavailable `@mcp-use/cli@4.4.1` tarball during installation. The server locks and overrides that CLI to **4.4.0**, which builds and runs successfully. Both applications have lockfiles.
 
 ## Provisioned backend

@@ -4,7 +4,7 @@
 
 ## Manufact — primary
 
-- Five focused mcp-use tools with validated inputs/results, clear errors, honest side-effect annotations, and interactive React cards.
+- Five menu/phone tools plus an authenticated account-profile tool, with validated inputs/results, clear errors, honest side-effect annotations, and interactive React cards.
 - The same structured results work for a headless MCP client.
 - Live Manufact endpoint: https://fast-pulse-1232h.run.mcp-use.com/mcp . The personal MenuLens plugin is installed in ChatGPT; the simplified Android APK is installed on the physical phone.
 
@@ -25,11 +25,13 @@
 
 ## Demo sequence
 
-1. “Explain this menu and help me find balanced vegetarian options.” Pair the Android phone from the ChatGPT card.
-2. Start sharing, switch back to ChatGPT, and show a fresh location status.
-3. Request restaurants, confirm one, and open its sourced menu.
-4. Ask in chat for dietary/ingredient preferences and show conflict and honest unknown labels. The widget presents four compact cards with expandable details and Show more; search and preferences stay in chat. For a menu-supported label, use an explicitly labeled item in sourced fixture mode; Palm Court's menu does not provide those labels.
-5. Explain an unfamiliar term, inspect published nutrition where available, and show a swap phrased as a question for staff.
-6. Run the headless MCP demo and display measured results. Stop sharing and verify revocation.
+1. Sign in to MenuLens through ChatGPT, pair the Android phone and explicitly start sharing.
+2. Ask “what's healthy where I am?” and confirm a nearby restaurant. Selection continues the original task.
+3. Show the focused result: up to three balanced choices and a concise best-pick explanation. There is no intervening whole-menu dump.
+4. Expand a dish for listed ingredients, meal balance and its published source. Keep missing nutrition and partial-menu limitations visible.
+5. Ask a dietary follow-up in chat. Harlequin's dairy-free check shows explicit goat-cheese conflict and honest uncertainty for unlabelled dishes. These are demonstration preferences, not a saved profile.
+6. Explain the same structured tools for headless agents, the InsForge backend and capped x402 retrieval/inference. Full-menu browsing remains available on explicit request.
+
+The prepared two-minute edit and submission description are documented in [DEMO-VIDEO.md](DEMO-VIDEO.md). The MP4, captions and original captures are local under ignored `artifacts/`; the video does not pretend the recorded nearby lookup is a new GPS fix.
 
 If live data or venue Wi-Fi fails, explicitly switch to **sourced fixture mode** and demonstrate sweetgreen, Souvla, and Tacolicious. Never present those menus as live restaurant availability.
