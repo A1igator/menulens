@@ -31,3 +31,5 @@ h2{font:400 25px/1.2 "DM Serif Display",Georgia,serif;letter-spacing:-.5px;margi
 @media(max-width:480px){.menulens{padding:18px 18px 16px;border-radius:14px}.topline{margin-bottom:18px}h2{font-size:23px}.dish-details>summary{gap:10px;padding:15px 0}.dish-image{width:56px;height:64px;border-radius:8px}.dish h3{font-size:14px}.dish-title{gap:8px}.price{font-size:11px;max-width:70px}.dish-expanded{padding-right:0}}
 @media(prefers-color-scheme:dark){:root{--paper:#1e2420;--ink:#e7eee5;--text:#d0d9ce;--muted:#a4b0a1;--line:#354036;--soft:#2b362d;--hover:#273129;--accent:#b4d4ac}.conflict{background:#492e27;color:#f4bba8}.supported{background:#2b4028;color:#bcdbb0}.unknown{background:#423b29;color:#e3cf99}.error{color:#f0b4a8}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+.selection-label{margin:0 0 7px;color:var(--muted);font-size:11px;font-weight:500}

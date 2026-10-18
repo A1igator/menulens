@@ -24,6 +24,10 @@ export const viewDataSchema = z.object({
   mode: z.enum(["fixture", "live"]),
   status: z.string(),
   note: z.string().optional(),
+  originalRequest: z.string().optional(),
+  responseGuidance: z.string().optional(),
+  display: z.enum(["shortlist", "dish_details", "full_menu"]).optional(),
+  selectionLabel: z.string().optional(),
   pairing: z
     .object({
       readHandle: z.string(),

@@ -237,7 +237,7 @@ export class MenuService {
       costUsd: flow.cost,
       lookup: { kind: query ? "by_name" as const : "nearby" as const, ...(fix ? {locationUpdatedAt:fix.observedAt,radiusMetres:500} : {}) },
       note: restaurants.length
-        ? "These are candidates from this request, not a confirmed restaurant. List names in plain text and ask which menu to show before retrieving it. Confirmation adds no dietary goals; do not add filling or other inferred criteria. Never substitute a restaurant remembered from another chat."
+        ? "These are candidates from this request, not a confirmed restaurant. List names in plain text and ask which restaurant to use for the original request. Selection confirms the restaurant; it does not reset the task to menu browsing. Carry the original request through get_menu, then use explain_dishes with 1–3 matching dish IDs to complete it. Confirmation adds no dietary goals; do not add filling or other inferred criteria. Never substitute a restaurant remembered from another chat."
         : "No restaurants found. Try searching by name.",
     };
   }
@@ -418,14 +418,14 @@ export class MenuService {
         "menu_expired",
         "This menu snapshot has expired. Retrieve a fresh menu.",
       );
-    const dishes = menu.dishes.filter(
-      (d) => !dishIds?.length || dishIds.includes(d.id),
-    );
     if (dishIds?.some((id) => !menu.dishes.some((d) => d.id === id)))
       throw new AppError(
         "dish_not_found",
         "A selected dish does not belong to this menu.",
       );
+    const dishes = dishIds?.length
+      ? [...new Set(dishIds)].map(id => menu!.dishes.find(dish => dish.id === id)!)
+      : menu.dishes;
     return {
       menuId: menu.id,
       restaurant: menu.restaurant,

@@ -93,11 +93,15 @@ try {
   const menu = await call("get_menu", {
     restaurantId: chosen.id,
     confirmed: true,
+    originalRequest: "Find vegetarian options avoiding sesame.",
   });
   if (!menu.cached || menu.costUsd !== 0)
     throw new Error("The live sample cache was not used.");
   const explained = await call("explain_dishes", {
     menuId: menu.menuId,
+    originalRequest: "Find vegetarian options avoiding sesame.",
+    dishIds: menu.dishes!.slice(0,3).map(dish=>dish.id),
+    selectionLabel: "Vegetarian options",
     preferences: { diets: ["vegetarian"], avoid: ["sesame"] },
   });
   if (!explained.dishes?.length)
