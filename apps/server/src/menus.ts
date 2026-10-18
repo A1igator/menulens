@@ -35,19 +35,33 @@ const scrapeSchema = z.object({
   url: z.url().optional(),
   content: z.string().min(1).max(2_000_000),
 });
-// Follow at most one explicit menu document linked by the restaurant page.
-// CDNs may have a different domain; every selected URL still passes publicUrl.
-export function linkedMenuDocument(text: string, pageUrl: string): string | undefined {
+// Hosted HTML menus and PDFs are both supported. Only follow explicitly
+// labelled menu links; publicUrl checks every hop, including separate hosts.
+export function linkedMenuDocument(text: string, pageUrl: string, visited: ReadonlySet<string> = new Set()): string | undefined {
+  const candidates: {url:string; score:number}[] = [];
   for (const match of text.matchAll(/\[([^\]]+)\]\(([^\s)]+)\)/g)) {
-    if (!/\b(menu|all day|lunch|dinner|brunch)\b/i.test(match[1])) continue;
+    const label = match[1].replace(/[*_()]/g, "").trim();
+    if (!/\b(menu|menus|food|all day|lunch|dinner|brunch|breakfast|main|dining|drink|drinks|cocktail|cocktails)\b/i.test(label)) continue;
+    if (!/^(?:(?:view|see|our|download|the)\s+)*(?:(?:food|all day|lunch|dinner|brunch|breakfast|main|dining|drink|cocktail)s?\s*)?(?:menus?)?(?:\s*(?:pdf|↗|→))?$/i.test(label) || !label) continue;
     try {
       const url = new URL(match[2], pageUrl);
-      if (!/\.pdf$/i.test(url.pathname)) continue;
       if (url.protocol === "http:") url.protocol = "https:";
-      if (url.protocol === "https:" && url.toString() !== pageUrl) return url.toString();
+      if (url.protocol !== "https:" || url.toString() === pageUrl || visited.has(url.toString()) || /\b(gallery|photos?|privacy|reservations?)\b/i.test(url.pathname)) continue;
+      candidates.push({url:url.toString(), score:(/\b(food|all day|lunch|dinner|brunch|breakfast|main|dining)\b/i.test(label) ? 20 : 0) + (/\.pdf$/i.test(url.pathname) ? 5 : 0) - (/\b(drinks?|cocktails?)\b/i.test(label) ? 10 : 0)});
     } catch { /* Ignore malformed page links. */ }
   }
-  return undefined;
+  return candidates.sort((a,b)=>b.score-a.score)[0]?.url;
+}
+export function officialMenuSearchHit(hits: {url:string;title?:string}[], website: string): string | undefined {
+  const domain = new URL(website).hostname.replace(/^www\./, "");
+  return hits.flatMap(hit => {
+    try {
+      const url = new URL(hit.url);
+      if (url.hostname.replace(/^www\./, "") !== domain || /\b(gallery|photos?|images?|reviews?|events?)\b/i.test(url.pathname)) return [];
+      const score = /\bmenus?\b/i.test(url.pathname) ? 20 : /\b(food|dining|eat)\b/i.test(url.pathname) ? 5 : 0;
+      return score ? [{url:hit.url,score:score+(/\.pdf$/i.test(url.pathname)?5:0)}] : [];
+    } catch { return []; }
+  }).sort((a,b)=>b.score-a.score)[0]?.url;
 }
 function unwrap(x: unknown): unknown {
   if (x && typeof x === "object" && "success" in x && "data" in x)
@@ -223,7 +237,7 @@ export class MenuService {
       costUsd: flow.cost,
       lookup: { kind: query ? "by_name" as const : "nearby" as const, ...(fix ? {locationUpdatedAt:fix.observedAt,radiusMetres:500} : {}) },
       note: restaurants.length
-        ? "These are candidates from this request, not a confirmed restaurant. Ask which one the user is visiting before retrieving a menu. Never substitute a restaurant remembered from another chat."
+        ? "These are candidates from this request, not a confirmed restaurant. List names in plain text and ask which menu to show before retrieving it. Confirmation adds no dietary goals; do not add filling or other inferred criteria. Never substitute a restaurant remembered from another chat."
         : "No restaurants found. Try searching by name.",
     };
   }
@@ -259,8 +273,15 @@ export class MenuService {
         : "auto";
     const cacheId = `${restaurantId}:${variant}`;
     const cached = await this.store.getMenu(cacheId);
-    if (cached && this.clock() - cached.fetchedAt < DAY)
-      return { menu: await this.checkedCache(cached), cached: true, costUsd: 0 };
+    if (cached && this.clock() - cached.fetchedAt < DAY) {
+      try {
+        return { menu: await this.checkedCache(cached), cached: true, costUsd: 0 };
+      } catch (error) {
+        // Invalid public snapshots are not valid cache hits. A new requested
+        // lookup may retrieve the actual menu once, using the same budget cap.
+        if (!(error instanceof AppError) || error.code !== "extraction_failed") throw error;
+      }
+    }
     // Coalesce simultaneous requests for the same public menu, including across button clicks.
     if (this.pending.has(cacheId))
       return {
@@ -324,17 +345,7 @@ export class MenuService {
             ),
           ),
         );
-        const menuHit = hits.results.find((h) => {
-          try {
-            return (
-              new URL(h.url).hostname.replace(/^www\./, "") === domain &&
-              /menu|food|eat/i.test(new URL(h.url).pathname)
-            );
-          } catch {
-            return false;
-          }
-        });
-        url = menuHit?.url ?? p.websiteUri;
+        url = officialMenuSearchHit(hits.results, p.websiteUri) ?? p.websiteUri;
       }
       if (!url)
         throw new AppError(
@@ -349,13 +360,17 @@ export class MenuService {
       if (page.url) url = await publicUrl(page.url);
       text = page.content;
       photoSources.push({text, url});
-      const document = linkedMenuDocument(text, url);
-      if (document) {
+      const visited = new Set([url]);
+      for (let hop=0; hop<2; hop++) {
+        const document = linkedMenuDocument(text, url, visited);
+        if (!document) break;
         const documentUrl = await publicUrl(document);
+        visited.add(documentUrl);
         const menuPage = scrapeSchema.parse(
           unwrap(await this.api!.call("scrape", { url: documentUrl }, flow)),
         );
         url = await publicUrl(menuPage.url ?? documentUrl);
+        visited.add(url);
         text = menuPage.content;
         photoSources.push({text, url});
       }
