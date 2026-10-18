@@ -3,6 +3,8 @@ import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { wrapFetchWithPayment } from "@x402/fetch";
 import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
 import type { Config } from "./config.js";
 import { AppError } from "./domain.js";
 import type { Store } from "./store.js";
@@ -42,6 +44,7 @@ export class PaidApi implements DataApi {
       limit: number,
       onSigned: () => void,
     ) => Promise<Response>,
+    private balanceReader?: () => Promise<bigint>,
   ) {}
   async call(
     route: PaidRoute,
@@ -61,6 +64,19 @@ export class PaidApi implements DataApi {
         "Provider quote exceeds the per-call budget.",
         429,
       );
+    // A balance read is free and happens before reservation, provider contact or
+    // signing. Test transports may inject a balance reader without using RPC.
+    if (!this.transport || this.balanceReader) {
+      let balance: bigint;
+      try {
+        balance = await (this.balanceReader ?? this.walletBalance.bind(this))();
+      } catch (error) {
+        if (error instanceof AppError) throw error;
+        throw new AppError("wallet_balance_unavailable", "MenuLens could not check its retrieval wallet balance. No provider request or payment was made.", 503);
+      }
+      if (balance < BigInt(Math.round(price * 1e6)))
+        throw new AppError("wallet_insufficient_funds", "MenuLens's retrieval wallet needs more USDC on Base. Nearby and restaurant-name searches both require funding. No provider request or payment was made. Cached menu reads still work.", 503);
+    }
     const reservation = await this.store.reserve(
       flow.id,
       price,
@@ -122,6 +138,14 @@ export class PaidApi implements DataApi {
         502,
       );
     }
+  }
+  private async walletBalance() {
+    const key = this.config.X402_PRIVATE_KEY;
+    if (!key || !/^0x[0-9a-f]{64}$/i.test(key))
+      throw new AppError("wallet_not_configured", "Configure a dedicated funded Base wallet on the server.", 503);
+    const account = privateKeyToAccount(key as `0x${string}`);
+    const client = createPublicClient({chain:base, transport:http("https://mainnet.base.org", {timeout:8000,retryCount:0})});
+    return client.readContract({address:USDC, functionName:"balanceOf", args:[account.address], abi:[{type:"function",name:"balanceOf",stateMutability:"view",inputs:[{name:"account",type:"address"}],outputs:[{type:"uint256"}]}]});
   }
   private async pay(
     url: string,

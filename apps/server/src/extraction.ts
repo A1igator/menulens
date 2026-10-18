@@ -127,7 +127,7 @@ export class X402Extractor implements Extractor {
             },
             workflow,
           ).catch((error: unknown) => {
-            if (unique.size && error instanceof AppError && ["payment_uncertain", "provider_failed", "budget_exceeded"].includes(error.code)) {
+            if (unique.size && error instanceof AppError && ["payment_uncertain", "provider_failed", "budget_exceeded", "wallet_insufficient_funds", "wallet_balance_unavailable"].includes(error.code)) {
               interrupted = true;
               return undefined;
             }

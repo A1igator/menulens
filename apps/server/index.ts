@@ -10,7 +10,7 @@ export const services = createServices();
 const serverConfig = {
   name: "menulens",
   title: "MenuLens",
-  version: "1.4.2",
+  version: "1.4.3",
   description:
     "Understand restaurant menus and find balanced choices that fit your dietary preferences.",
   instructions:
@@ -85,10 +85,13 @@ async function result(run: () => Promise<ViewData>) {
       mode: services.config.MENULENS_MODE,
       status: "error",
       error,
+      note: ["wallet_insufficient_funds", "wallet_not_configured", "wallet_balance_unavailable"].includes(error.code)
+        ? "Resolve wallet funding/configuration before trying a paid lookup again. A restaurant-name search is also paid; do not offer it as a free workaround. The user can paste menu text directly in chat for discussion, or reopen a known cached menu. Keep the response neutral: do not add filling, low-oil, weight-loss or other dietary goals the user did not request."
+        : "Explain the actual failure without inventing dishes or adding filling, low-oil, weight-loss or other dietary goals. Do not automatically retry an uncertain payment.",
     };
     return {
       isError: true,
-      content: [{ type: "text" as const, text: error.message }],
+      content: [{ type: "text" as const, text: JSON.stringify(data) }],
       structuredContent: data,
     };
   }

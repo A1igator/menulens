@@ -214,6 +214,27 @@ test("failure before signing releases the reservation, allowing a later explicit
     store.reserve("other", 0.02, Date.now(), 0.5, 0.02),
   );
 });
+test("insufficient wallet funds stop before reservation, provider contact or signing, and a top-up allows a new request", async () => {
+  const store=new MemoryStore();
+  let calls=0, reservations=0, balance=4600n;
+  const reserve=store.reserve.bind(store);
+  store.reserve=async(...args)=>{reservations++;return reserve(...args);};
+  const api=new PaidApi(store,config(),async(_url,_init,_limit,signed)=>{calls++;signed();return Response.json({places:[]});},async()=>balance);
+  await assert.rejects(api.call("nearby",{},newWorkflow()),e=>e instanceof AppError && e.code==="wallet_insufficient_funds");
+  await assert.rejects(api.call("searchPlaces",{},newWorkflow()),/name searches both require funding/);
+  assert.equal(calls,0);
+  assert.equal(reservations,0);
+  balance=20_000n;
+  await api.call("nearby",{},newWorkflow());
+  assert.equal(calls,1);
+  assert.equal(reservations,1);
+});
+test("failed balance checks stop before provider contact without leaking RPC error details",async()=>{
+  let calls=0;
+  const api=new PaidApi(new MemoryStore(),config(),async()=>{calls++;return Response.json({});},async()=>{throw new Error("private transport details");});
+  await assert.rejects(api.call("nearby",{},newWorkflow()),e=>e instanceof AppError && e.code==="wallet_balance_unavailable" && !e.message.includes("private transport"));
+  assert.equal(calls,0);
+});
 test("fixture mode is explicitly labeled and needs restaurant confirmation", async () => {
   const s = setup(),
     menus = new MenuService(s.store, s.location, "fixture");
