@@ -5,12 +5,13 @@ import { createServices } from "./src/services.js";
 import { mountHttp } from "./src/http.js";
 import { viewDataSchema, type ViewData } from "./src/view-data.js";
 import type { AccountUser } from "./src/account-auth.js";
+import { explicitlyRequestsFullMenu } from "./src/menu-intent.js";
 
 export const services = createServices();
 const serverConfig = {
   name: "menulens",
   title: "MenuLens",
-  version: "1.5.0",
+  version: "1.5.1",
   description:
     "Understand restaurant menus and find balanced choices that fit your dietary preferences.",
   instructions:
@@ -48,7 +49,7 @@ const paidAnnotations = {
   openWorldHint: true,
   idempotentHint: false,
 };
-const originalRequestSchema = z.string().trim().min(1).max(1000).describe("The user's actual task from this conversation, including only explicitly stated preferences. A restaurant-selection reply such as Show the menu for X confirms the restaurant and DOES NOT replace an earlier task such as what's healthy here. Carry that earlier task forward. If the user explicitly changes the task, use the new request. Do not send conversation history.");
+const originalRequestSchema = z.string().trim().min(1).max(1000).describe("Quote the user's original task exactly, including only their explicitly stated preferences. A restaurant-selection reply such as Show the menu for X confirms the restaurant and DOES NOT replace an earlier task such as what's healthy here. Carry that earlier task forward. If the user explicitly changes the task, quote the new request. Do not paraphrase menu confirmation as a request for the full menu. Omit conversation history and precise coordinates.");
 const dishSelectionSchema = z.object({
   menuId: z.string().min(1).max(400),
   originalRequest: originalRequestSchema,
@@ -57,6 +58,8 @@ const dishSelectionSchema = z.object({
   dishIds: z.array(z.string().max(100)).max(60).optional().describe("The relevant dish IDs, best match first. Supply 1–3 for a shortlist or focused question. Do not include the whole menu unless explicitly requested."),
   selectionLabel: z.string().trim().min(1).max(60).default("Your options").describe("Short heading faithful to the original task, such as Balanced options, Vegetarian choices, or Dishes under $20. Do not add unrequested goals."),
 }).superRefine((input,ctx)=>{
+  if (input.display === "full_menu" && !explicitlyRequestsFullMenu(input.originalRequest))
+    ctx.addIssue({code:"custom",path:["display"],message:"A restaurant selection or Show the menu for X is not a full-menu request. Continue the user's earlier task with 1–3 matching dish IDs. full_menu requires an actual explicit request for the full/entire menu or all items; do not invent one."});
   if (input.display !== "full_menu" && (!input.dishIds?.length || input.dishIds.length > 3))
     ctx.addIssue({code:"custom",path:["dishIds"],message:"Choose 1–3 relevant dish IDs to answer the original request. Use full_menu only for an explicit full-menu request."});
 });
@@ -207,7 +210,10 @@ export const getMenu = server.tool(
         costUsd,
         ...(await services.menus.explain(menu.id, { diets: [], avoid: [] })),
         originalRequest,
-        responseGuidance: "This is internal menu data, not the answer. Continue originalRequest: choose 1–3 relevant dishes and call explain_dishes with their IDs, the same originalRequest and only stated preferences. Use a shortlist for recommendations or a focused question; full_menu is reserved for an explicit request to browse everything. Then give a brief direct answer with a best pick and why, rather than menu tables or a category-by-category transcript. Do not ask the user to repeat their task or infer extra dietary goals.",
+        fullMenuAllowed: explicitlyRequestsFullMenu(originalRequest),
+        responseGuidance: explicitlyRequestsFullMenu(originalRequest)
+          ? "The user explicitly asked for the whole menu. Use explain_dishes with display=full_menu to browse it without duplicating it as a long transcript."
+          : "full_menu is unavailable for this request. A generic Show the menu for X is restaurant confirmation, not a new browsing task. Continue the user's ORIGINAL task from earlier in this conversation: choose 1–3 relevant dishes and call explain_dishes with their IDs, the exact original request and only stated preferences. For what's healthy here, finish with balanced options and a brief best pick. For other tasks, answer that task. Do not print menu tables, a category-by-category transcript, or ask the user to restate the task.",
       };
     }),
 );

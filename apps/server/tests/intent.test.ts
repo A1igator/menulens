@@ -38,6 +38,7 @@ test("menu retrieval stays internal and one contextual shortlist renders in requ
   assert.equal(data.dishes!.length,selected.length);
   assert.deepEqual(data.dishes!.map(dish=>dish.id),selected);
   assert.equal(data.originalRequest,originalRequest);
+  assert.equal(menu.fullMenuAllowed,false);
   assert.ok(data.dishes!.every(dish=>dish.compatibility.length===0));
 });
 
@@ -55,4 +56,8 @@ test("a shortlist cannot accidentally render every dish; full browsing is explic
   assert.equal(data.dishes!.length,menu.dishes.length);
   const missing=await call("get_menu",{restaurantId:menu.id,confirmed:true});
   assert.ok(missing.error || missing.result?.isError,"The original task must accompany restaurant confirmation.");
+  for (const originalRequest of ["Show the menu for The Harlequin.","What's healthy where I am?","Don't show the full menu; just suggest a few dishes."]) {
+    const rejected=await call("explain_dishes",{menuId:menu.id,originalRequest,display:"full_menu"});
+    assert.ok(rejected.error || rejected.result?.isError,"Restaurant confirmation and recommendations must not render the whole menu.");
+  }
 });

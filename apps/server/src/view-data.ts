@@ -25,6 +25,7 @@ export const viewDataSchema = z.object({
   status: z.string(),
   note: z.string().optional(),
   originalRequest: z.string().optional(),
+  fullMenuAllowed: z.boolean().optional(),
   responseGuidance: z.string().optional(),
   display: z.enum(["shortlist", "dish_details", "full_menu"]).optional(),
   selectionLabel: z.string().optional(),
