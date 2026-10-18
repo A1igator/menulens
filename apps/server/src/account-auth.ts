@@ -40,7 +40,9 @@ export function accountAuth(options: {origin:string; secret:string; storage:OAut
   const router = new Hono();
   router.use("*",bodyLimit({maxSize:10_000}));
   router.use("*",async(c,next)=>{
-    c.header("Cache-Control","no-store"); c.header("Referrer-Policy","no-referrer");
+    // no-referrer makes browsers send Origin:null on native form POSTs.
+    // Send only the public origin, never sign-in query strings, while preserving CSRF origin checks.
+    c.header("Cache-Control","no-store"); c.header("Referrer-Policy","strict-origin");
     c.header("X-Content-Type-Options","nosniff");
     c.header("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
     await next();

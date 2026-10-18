@@ -32,4 +32,6 @@ Live mode defaults to account authentication and fails closed if its configurati
 
 45 local tests, typecheck and production builds pass, including an authentication-enabled build. Checks cover owner isolation, cross-chat reuse, movement reading a newer fix, stale/expired behavior, replacement revocation, CSRF, PKCE, invalid callbacks, code replay, mail throttling, encrypted storage, atomic code consumption and unsigned private-tool rejection. The actual restricted database role can use encrypted OAuth storage; anonymous/authenticated roles cannot read it. The live InsForge OTP verification endpoint rejects an invalid reserved test identity. No sign-in emails or paid provider calls were sent by these tests.
 
+The native browser form was also checked with email delivery disabled. Use `Referrer-Policy: strict-origin` on sign-in pages: `no-referrer` makes normal browser form POSTs send `Origin: null` and fail the required same-origin check. The policy sends no path/query data in referrers. Keep the origin and CSRF checks enabled.
+
 Native ChatGPT account linking, one-time physical pairing, and a new-chat nearby lookup require user sign-in and remain the final acceptance steps.
