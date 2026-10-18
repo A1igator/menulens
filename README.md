@@ -130,7 +130,7 @@ npx expo export --platform android
 
 See [device acceptance checklist](docs/VALIDATION.md) and [prize/demo notes](docs/SUBMISSION.md).
 
-The submission demo is an actual ChatGPT screen recording under two minutes, saved locally as `artifacts/MenuLens-live-demo.mp4` and `artifacts/MenuLens-demo.mp4`. It shows a fresh phone lookup, restaurant confirmation, a relevant shortlist, dish expansion and a dietary follow-up, with brief walkthrough narration. See the [demo video notes and submission description](docs/DEMO-VIDEO.md). Captures and video outputs are ignored by Git; the assembly script is `scripts/render-screen-demo.py`.
+The submission demo is an actual ChatGPT screen recording under two minutes, saved locally as `artifacts/MenuLens-live-demo.mp4` and `artifacts/MenuLens-demo.mp4`. It shows a fresh phone lookup, restaurant confirmation, a relevant shortlist, dish expansion and a dietary follow-up, with no audio. See the [demo video notes and submission description](docs/DEMO-VIDEO.md). Captures and video outputs are ignored by Git; the assembly script is `scripts/render-screen-demo.py`.
 
 The MCP template’s `mcp-use@2.10.1` referenced an unavailable `@mcp-use/cli@4.4.1` tarball during installation. The server locks and overrides that CLI to **4.4.0**, which builds and runs successfully. Both applications have lockfiles.
 
