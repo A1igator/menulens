@@ -8,7 +8,7 @@ The edit uses captured ChatGPT interactions, synthesized narration and captions.
 
 MenuLens gives ChatGPT location-aware menu understanding through a paired Android companion and a focused mcp-use server hosted on Manufact. It carries the user's request through restaurant confirmation, shows a small sourced dish shortlist, and makes dietary uncertainty and retrieval spending explicit, using InsForge Postgres and capped x402 retrieval/inference.
 
-Repository: https://github.com/A1igator/menulens (private; grant judges access before submitting).
+Public repository: https://github.com/A1igator/menulens .
 
 ## Timeline
 
