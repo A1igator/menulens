@@ -143,5 +143,29 @@ export function accountAuth(options: {origin:string; secret:string; storage:OAut
     }),
     mapUser:user=>({id:user.subject}),
   });
+  const setup=provider.setup!;
+  provider.setup=host=>setup({...host,route(method,path,handler){
+    host.route(method,path,async c=>{
+      const tokenRequest=path.endsWith('/oauth/token')?c.req.raw.clone():undefined;
+      const response=await handler(c);
+      if(path.endsWith('/oauth/token') && response.status>=400){
+        const body=await response.clone().json().catch(()=>({})) as Record<string,unknown>;
+        const form=await tokenRequest!.formData().catch(()=>new FormData());
+        // Only fixed categories/presence flags are logged, never parameter values or response details.
+        const reasons:Record<string,string>={
+          'The code was issued to another client':'client_mismatch',
+          'The authorization code is invalid, expired, or used':'code_unavailable',
+          'redirect_uri does not match the authorization request':'redirect_mismatch',
+          'resource must be this MCP server':'resource_mismatch',
+          'code_verifier does not match the code challenge':'pkce_mismatch',
+        };
+        console.warn(JSON.stringify({event:'oauth_token_rejected',status:response.status,
+          reason:typeof body.error_description==='string'?(reasons[body.error_description]??'other'):'other',
+          clientIdProvided:form.has('client_id'),chatgptClient:form.get('client_id')==='https://chatgpt.com/oauth/client.json',
+          clientAssertionProvided:form.has('client_assertion'),authorizationProvided:c.req.header('authorization')!==undefined}));
+      }
+      return response;
+    });
+  }});
   return {provider,router};
 }

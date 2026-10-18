@@ -14,6 +14,56 @@ const uuid="11111111-1111-4111-8111-111111111111";
 const sha=(s:string)=>createHash("sha256").update(s).digest("base64url");
 const csrf=(html:string)=>{const value=/name="csrf" value="([^"]+)"/.exec(html)?.[1];assert.ok(value);return value;};
 
+test("complete OAuth exchange issues usable account tokens and refreshes with encrypted storage",async()=>{
+  const db=new PGlite();
+  await db.exec('create table menulens_auth(key text primary key,value text not null,expires_at bigint not null)');
+  const storage=new AuthStorage(db,secret);
+  const auth=accountAuth({origin,secret,storage,identity:{send:async()=>{},verify:async()=>uuid}});
+  const server=new MCPServer({name:'account-flow',version:'1',oauth:auth.provider,mixedAuth:true});
+  server.app.route('/signin',auth.router);
+  server.tool({name:'whoami',securitySchemes:[{type:'oauth2',scopes:['menulens:phone']}]},(_input,ctx)=>({content:[{type:'text',text:ctx.auth.user.id}]}));
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init)=>server.fetch(new Request(input,init));
+  const jar=new Map<string,string>();
+  const request=async(path:string,init:RequestInit={})=>{
+    const headers=new Headers(init.headers);headers.set('cookie',[...jar].map(([k,v])=>`${k}=${v}`).join('; '));
+    const response=await server.fetch(new Request(new URL(path,origin),{...init,headers}));
+    for(const entry of response.headers.getSetCookie()){
+      const [pair]=entry.split(';'),split=pair.indexOf('=');
+      jar.set(pair.slice(0,split),pair.slice(split+1));
+    }
+    return response;
+  };
+  const form=(body:Record<string,string>):RequestInit=>({method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',origin},body:new URLSearchParams(body)});
+  try{
+    const registered=await request('/mcp/oauth/register',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({redirect_uris:['https://client.example/callback'],token_endpoint_auth_method:'none'})});
+    const {client_id}=await registered.json() as {client_id:string};assert.ok(client_id);
+    const verifier='v'.repeat(64),q=new URLSearchParams({client_id,redirect_uri:'https://client.example/callback',response_type:'code',scope:'menulens:phone',resource:origin+'/mcp',code_challenge:sha(verifier),code_challenge_method:'S256',state:'client-state'});
+    const approval=await request('/mcp/oauth/authorize?'+q),html=await approval.text();
+    const action=html.match(/<form[^>]*action="([^"]+)"/)?.[1]?.replaceAll('&amp;','&');assert.ok(action);
+    const consent=await request(action,form({decision:'allow'}));assert.equal(consent.status,302);
+    const login=await request(consent.headers.get('location')!);
+    const sent=await request('/signin/email',form({csrf:csrf(await login.text()),email:'alice@example.test'}));
+    const verified=await request('/signin/verify',form({csrf:csrf(await sent.text()),otp:'123456'}));assert.equal(verified.status,302);
+    const callback=await request(verified.headers.get('location')!);assert.equal(callback.status,302);
+    const returned=new URL(callback.headers.get('location')!);assert.equal(returned.searchParams.get('state'),'client-state');
+    assert.equal(returned.searchParams.get('error'),null);
+    const exchanged=await request('/mcp/oauth/token',form({grant_type:'authorization_code',client_id,code:returned.searchParams.get('code')!,code_verifier:verifier,redirect_uri:'https://client.example/callback',resource:origin+'/mcp'}));
+    const tokens=await exchanged.json() as Record<string,string>;assert.equal(exchanged.status,200,JSON.stringify(tokens));assert.ok(tokens.access_token);
+    const call=await request('/mcp',{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream','MCP-Protocol-Version':'2025-11-25',authorization:'Bearer '+tokens.access_token},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'whoami',arguments:{}}})});
+    assert.match(await call.text(),new RegExp(uuid));
+    const refreshed=await request('/mcp/oauth/token',form({grant_type:'refresh_token',client_id,refresh_token:tokens.refresh_token}));assert.equal(refreshed.status,200);
+    const warnings:string[]=[],warn=console.warn;
+    console.warn=message=>warnings.push(String(message));
+    try{
+      const replay=await request('/mcp/oauth/token',form({grant_type:'authorization_code',client_id,code:returned.searchParams.get('code')!,code_verifier:verifier}));
+      assert.equal(replay.status,400);
+    }finally{console.warn=warn;}
+    assert.equal(JSON.parse(warnings[0]).reason,'code_unavailable');
+    for(const sensitive of [tokens.access_token,tokens.refresh_token,returned.searchParams.get('code')!,verifier,'alice@example.test'])assert.equal(warnings.join('').includes(sensitive),false);
+  }finally{globalThis.fetch=originalFetch;await db.close();}
+});
+
 function loginSetup(){
   const store=memoryStorage(),sent:string[]=[];
   let verifications=0;
