@@ -12,6 +12,7 @@ import { AuthStorage } from "../src/auth-storage.js";
 const origin="https://menu.example", secret="test-only-auth-secret-never-deployed-123456789";
 const uuid="11111111-1111-4111-8111-111111111111";
 const sha=(s:string)=>createHash("sha256").update(s).digest("base64url");
+const completed=(html:string)=>{const value=/<a id="continue-signin" href="([^"]+)"/.exec(html)?.[1];assert.ok(value);return value.replaceAll("&amp;","&");};
 const csrf=(html:string)=>{const value=/name="csrf" value="([^"]+)"/.exec(html)?.[1];assert.ok(value);return value;};
 
 test("complete OAuth exchange issues usable account tokens and refreshes with encrypted storage",async()=>{
@@ -44,8 +45,8 @@ test("complete OAuth exchange issues usable account tokens and refreshes with en
     const consent=await request(action,form({decision:'allow'}));assert.equal(consent.status,302);
     const login=await request(consent.headers.get('location')!);
     const sent=await request('/signin/email',form({csrf:csrf(await login.text()),email:'alice@example.test'}));
-    const verified=await request('/signin/verify',form({csrf:csrf(await sent.text()),otp:'123456'}));assert.equal(verified.status,302);
-    const callback=await request(verified.headers.get('location')!);assert.equal(callback.status,302);
+    const verified=await request('/signin/verify',form({csrf:csrf(await sent.text()),otp:'123456'}));assert.equal(verified.status,200);
+    const callback=await request(completed(await verified.text()));assert.equal(callback.status,302);
     const returned=new URL(callback.headers.get('location')!);assert.equal(returned.searchParams.get('state'),'client-state');
     assert.equal(returned.searchParams.get('error'),null);
     const exchanged=await request('/mcp/oauth/token',form({grant_type:'authorization_code',client_id,code:returned.searchParams.get('code')!,code_verifier:verifier,redirect_uri:'https://client.example/callback',resource:origin+'/mcp'}));
@@ -86,8 +87,8 @@ function loginSetup(){
     const session=await start();
     const email=await post("email",{csrf:session.form,email:"alice@example.test"},session.cookie);
     const verified=await post("verify",{csrf:csrf(await email.text()),otp:"123456"},session.cookie);
-    assert.equal(verified.status,302);
-    const callback=new URL(verified.headers.get("location")!);
+    assert.equal(verified.status,200);
+    const callback=new URL(completed(await verified.text()));
     assert.equal(callback.origin,origin);
     assert.equal(callback.searchParams.get("state"),"expected-client-state");
     return {...session,code:callback.searchParams.get("code")!};
@@ -114,8 +115,8 @@ test("email sign-in validates browser origin, CSRF, redirect and PKCE before iss
   assert.equal(foreign.status,400);
   assert.equal(s.verifications(),0);
   const verified=await s.post("verify",{csrf:codeForm,otp:"123456"},first.cookie);
-  assert.equal(verified.status,302);
-  const code=new URL(verified.headers.get("location")!).searchParams.get("code")!;
+  assert.equal(verified.status,200);
+  const code=new URL(completed(await verified.text())).searchParams.get("code")!;
   assert.equal((await s.exchange(code,first.verifier,undefined,"wrong-secret")).status,401);
   const response=await s.exchange(code,first.verifier);
   assert.equal(response.status,200);

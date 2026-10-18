@@ -113,7 +113,13 @@ export function accountAuth(options: {origin:string; secret:string; storage:OAut
       await storage.set("login:code:"+hash(code),JSON.stringify({id,redirect:callback,challenge:transaction.t.challenge}),60);
       deleteCookie(c,cookie,{path:"/",secure:origin.startsWith("https:")});
       const url=new URL(callback);url.searchParams.set("state",transaction.t.state);url.searchParams.set("code",code);
-      return c.redirect(url.toString());
+      // A redirect chain from this form POST to the external MCP client is blocked
+      // by form-action 'self'. Start a fresh document navigation without relaxing CSP.
+      const target=escape(url.toString());
+      return c.html('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+        '<meta http-equiv="refresh" content="0;url='+target+'"><title>Connecting MenuLens</title>'+
+        '<style>body{font:16px/1.5 system-ui;color:#243c32;background:#f7f8f3;min-height:100vh;margin:0;display:grid;place-items:center}main{padding:32px;text-align:center}h1{font:30px Georgia}a{color:#294c37}</style>'+
+        '<main><strong>MenuLens</strong><h1>Connecting your account…</h1><p><a id="continue-signin" href="'+target+'">Continue to ChatGPT</a></p></main></html>');
     }catch(error){return transaction?page(c,transaction.t,error instanceof Error?error.message:"Sign-in failed."):c.text("Invalid sign-in request.",400);}
     finally{if(locked&&transaction)await storage.delete(transaction.key+":lock");}
   });
