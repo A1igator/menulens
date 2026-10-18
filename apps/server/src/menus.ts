@@ -156,7 +156,9 @@ export class MenuService {
     await this.store.putMenu(checked);
     return checked;
   }
-  async find(handle?: string, query?: string) {
+  async find(handle?: string, query?: string, ownerId?: string, searchMode: "nearby" | "by_name" = "nearby") {
+    if (searchMode === "nearby" && query) throw new AppError("nearby_search_required", "For 'here', 'near me', or a changed location, omit query and use the current phone fix. Only use searchMode=by_name when the user explicitly names a restaurant in the current request; never fill it from memory.");
+    if (searchMode === "by_name" && !query) throw new AppError("restaurant_name_required", "Provide the restaurant name explicitly requested by the user.");
     const flow = newWorkflow();
     if (this.mode === "fixture")
       return {
@@ -172,7 +174,7 @@ export class MenuService {
         note: "Fixture restaurants are sourced examples, not live nearby results.",
       };
     const fix =
-      !query && handle ? await this.location.currentFix(handle) : undefined;
+      !query ? await this.location.currentFix(handle, ownerId) : undefined;
     if (!query && !fix)
       throw new AppError(
         "location_unavailable",
@@ -219,8 +221,9 @@ export class MenuService {
       restaurants,
       mode: this.mode,
       costUsd: flow.cost,
+      lookup: { kind: query ? "by_name" as const : "nearby" as const, ...(fix ? {locationUpdatedAt:fix.observedAt,radiusMetres:500} : {}) },
       note: restaurants.length
-        ? "Select the restaurant you are visiting. GPS proximity does not confirm your restaurant."
+        ? "These are candidates from this request, not a confirmed restaurant. Ask which one the user is visiting before retrieving a menu. Never substitute a restaurant remembered from another chat."
         : "No restaurants found. Try searching by name.",
     };
   }

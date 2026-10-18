@@ -285,6 +285,49 @@ test("unavailable location never causes a paid nearby query", async () => {
   await assert.rejects(menus.find());
   assert.equal(calls, 0);
 });
+test("new chats reuse only their authenticated account's latest phone and newer fix", async () => {
+  const s=setup(), account="11111111-1111-4111-8111-111111111111", other="22222222-2222-4222-8222-222222222222";
+  const pair=await s.location.start(account), device=await s.location.claim(pair.pairingCode);
+  await s.location.upload(device.deviceToken,fix(s.now()));
+  assert.equal((await s.location.status(undefined,account)).state,"ready");
+  await assert.rejects(s.location.currentFix(pair.readHandle,other));
+  await assert.rejects(s.location.currentFix(undefined,other));
+  const centers:unknown[]=[];
+  const menus=new MenuService(s.store,s.location,"live",{call:async(endpoint,body)=>{
+    assert.equal(endpoint,"nearby");
+    centers.push((body as {locationRestriction:{circle:{center:unknown}}}).locationRestriction.circle.center);
+    return {places:[{id:"place-"+centers.length,displayName:{text:"Current restaurant"}}]};
+  }});
+  const first=await menus.find(undefined,undefined,account);
+  s.advance(MINUTE);
+  await s.location.upload(device.deviceToken,{...fix(s.now()),latitude:37.8,longitude:-122.5});
+  const second=await menus.find(undefined,undefined,account);
+  assert.notDeepEqual(centers[0],centers[1]);
+  assert.notEqual(first.restaurants[0].id,second.restaurants[0].id);
+  assert.equal(second.lookup?.locationUpdatedAt,s.now());
+  assert.ok(!JSON.stringify(second).includes("latitude"));
+  await assert.rejects(menus.find(undefined,"Old restaurant",account),/omit query/);
+  assert.equal(centers.length,2);
+  s.advance(6*MINUTE);
+  await assert.rejects(menus.find(undefined,undefined,account));
+  assert.equal(centers.length,2);
+});
+test("replacing an account's phone revokes its old device without affecting other accounts", async()=>{
+  const s=setup(), account="11111111-1111-4111-8111-111111111111", other="22222222-2222-4222-8222-222222222222";
+  const a=await s.location.start(account), old=await s.location.claim(a.pairingCode);
+  const b=await s.location.start(other), independent=await s.location.claim(b.pairingCode);
+  s.advance(1);
+  const c=await s.location.start(account);
+  assert.equal((await s.location.status(undefined,account)).state,"waiting_for_fix");
+  const replacement=await s.location.claim(c.pairingCode);
+  await assert.rejects(s.location.upload(old.deviceToken,fix(s.now())),/ended/);
+  await s.location.upload(replacement.deviceToken,fix(s.now()));
+  await s.location.upload(independent.deviceToken,fix(s.now()));
+  assert.equal((await s.location.status(undefined,account)).state,"ready");
+  assert.equal((await s.location.status(undefined,other)).state,"ready");
+  await s.location.stop(replacement.deviceToken);
+  await assert.rejects(s.location.currentFix(undefined,account),/two-hour/);
+});
 test("private and loopback addresses are rejected by menu URL protection", () => {
   for (const ip of [
     "127.0.0.1",
@@ -431,6 +474,7 @@ test("live x402 inference requires no model subscription key", () => {
   assert.equal(
     loadConfig({
       MENULENS_MODE: "live",
+      MENULENS_AUTH: "disabled",
       INSFORGE_DATABASE_URL: "postgres://server",
       X402_PRIVATE_KEY: "configured",
     }).MENULENS_INFERENCE,
@@ -440,6 +484,7 @@ test("live x402 inference requires no model subscription key", () => {
     () =>
       loadConfig({
         MENULENS_MODE: "live",
+        MENULENS_AUTH: "disabled",
         MENULENS_INFERENCE: "gateway",
         INSFORGE_DATABASE_URL: "postgres://server",
         X402_PRIVATE_KEY: "configured",

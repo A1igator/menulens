@@ -43,6 +43,7 @@ try {
     "menulens_menus",
     "menulens_dishes",
     "menulens_payments",
+    "menulens_auth",
   ]) {
     await admin.query(
       `grant select,insert,update,delete on public.${escapeIdentifier(table)} to ${escapeIdentifier(role)}`,

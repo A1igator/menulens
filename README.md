@@ -40,7 +40,7 @@ npm run build:android
 
 Install the **preview APK** from the EAS build result. The preview build includes its JavaScript bundle; it does not require a running Metro server. The development profile is also available. **Expo Go does not support this background-location flow.**
 
-In ChatGPT call `start_pairing`, enter the eight-character code in the companion, then tap **Share location**. Grant foreground location, notifications, and “Allow all the time” background location when requested. Return to ChatGPT and ask MenuLens to find your restaurant. Confirm the restaurant in chat before reading its menu.
+Sign in to MenuLens through the ChatGPT connection first. In ChatGPT call `start_pairing`, enter the eight-character code in the companion, then tap **Share location**. Grant foreground location, notifications, and “Allow all the time” background location when requested. Return to ChatGPT and ask MenuLens to find your restaurant. Confirm the restaurant in chat before reading its menu.
 
 The foreground-service notification opens the app’s stop-sharing screen. Sharing expires two hours after pairing. Android controls delivery frequency; force-stop ends updates. Fixes older than five minutes are rejected for nearby lookup. GPS alone never confirms which restaurant you are inside.
 
@@ -52,13 +52,17 @@ For later JavaScript-only UI edits, `npx eas-cli@latest workflow:run .eas/workfl
 
 For a local phone test, bind the server with `HOST=0.0.0.0 npm run dev`, use the computer’s LAN address, and run a development client on the same network. HTTP is permitted only in development builds; use HTTPS for the standalone APK. Do not expose the development server directly to the public internet.
 
+For automatic phone reuse across chats and secure deployment setup, see [account linking](docs/AUTH.md). Sharing still expires after two hours.
+
 ## Enable live mode
 
 Copy `apps/server/.env.example` to `apps/server/.env` and configure:
 
 | Setting | Purpose |
 | --- | --- |
-| `MENULENS_MODE=live` | Requires actual providers; fails closed when credentials are missing |
+| `MENULENS_MODE=live` | Requires actual providers and account sign-in; fails closed when credentials are missing |
+| `INSFORGE_URL`, `INSFORGE_ANON_KEY` | InsForge email-code authentication |
+| `MCP_USE_OAUTH_SECRET` | Persistent, server-only OAuth encryption/signing secret |
 | `INSFORGE_DATABASE_URL` | TLS-enabled Postgres connection for a dedicated server role with grants limited to the `public.menulens_*` app tables |
 | `MENULENS_INFERENCE=x402` | Default: per-call inference through AgentData, with no model API account |
 | `INSFORGE_AI_API_KEY` | Optional gateway alternative: InsForge/OpenRouter key, with `MENULENS_INFERENCE=gateway` |
@@ -108,7 +112,7 @@ npx mcp-use deploy --no-github --name menulens --env HOST=0.0.0.0 --build-comman
 
 These helpers target this already-provisioned Manufact server. The first prepares an ignored, whitelisted deployment file; the second explicitly writes the DB credential and wallet key with `--secret` so they remain write-only. It never publishes the admin DB credential. The CLI uploads source while excluding `.env` files. Subsequent deploys inherit the stored environment; avoid passing secrets with `deploy --env-file`, which does not mark them write-only. For a separate copy, create its server first and update the helpers’ server ID and public URL. The configured deployment uses InsForge for persistent pairing; the local fixture default remains in-memory unless `MENULENS_STORE=postgres` is set.
 
-Add the deployed **`https://…/mcp`** endpoint in ChatGPT developer mode. Five tools expose structured results. Pairing, menu retrieval and dish explanation use three interactive views with a shared panel implementation; restaurant lookup and location status stay in chat. A real ChatGPT account is needed to verify native card rendering; the local browser preview and headless protocol test do not replace that check.
+Add the deployed **`https://…/mcp`** endpoint in ChatGPT developer mode. Live mode exposes six tools, including the authenticated account profile; fixture mode exposes the original five tools. Pairing, menu retrieval and dish explanation use three interactive views with a shared panel implementation; restaurant lookup and location status stay in chat. A real ChatGPT account is needed to verify native card rendering; the local browser preview and headless protocol test do not replace that check.
 
 OpenAI’s current plugin guidelines discourage precise location collection through tools. This companion architecture is a developer-mode hackathon demonstration; **public-directory eligibility has not been established**.
 

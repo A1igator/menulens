@@ -18,6 +18,7 @@ export interface Store {
     shareExpires: number,
   ): Promise<boolean>;
   read(readHash: string): Promise<Session | null>;
+  readForOwner(ownerId: string): Promise<Session | null>;
   upload(writeHash: string, fix: Fix, now: number): Promise<boolean>;
   stop(writeHash: string): Promise<boolean>;
   purge(now: number): Promise<void>;
@@ -63,12 +64,21 @@ export class MemoryStore implements Store {
     );
     if (!s) return false;
     Object.assign(s, { writeHash, state: "sharing", shareExpires });
+    if (s.ownerId) for (const other of this.sessions.values()) {
+      if (other.id !== s.id && other.ownerId === s.ownerId && other.state === "sharing")
+        Object.assign(other, {state:"stopped", fix:null, writeHash:null});
+    }
     return true;
   }
   async read(hash: string) {
     return structuredClone(
       [...this.sessions.values()].find((s) => s.readHash === hash) ?? null,
     );
+  }
+  async readForOwner(ownerId: string) {
+    const sessions = [...this.sessions.values()].filter((s) => s.ownerId === ownerId)
+      .sort((a,b) => Number(b.state === "sharing") - Number(a.state === "sharing") || b.createdAt - a.createdAt);
+    return structuredClone(sessions[0] ?? null);
   }
   async upload(hash: string, fix: Fix, now: number) {
     const s = [...this.sessions.values()].find(
@@ -152,7 +162,7 @@ export class PostgresStore implements Store {
   }
   async create(s: Session) {
     await this.pool.query(
-      "insert into public.menulens_sessions(id,code_hash,read_hash,write_hash,pair_expires,share_expires,state,fix,created_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      "insert into public.menulens_sessions(id,code_hash,read_hash,write_hash,pair_expires,share_expires,state,fix,created_at,owner_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
       [
         s.id,
         s.codeHash,
@@ -163,15 +173,23 @@ export class PostgresStore implements Store {
         s.state,
         s.fix,
         s.createdAt,
+        s.ownerId ?? null,
       ],
     );
   }
   async claim(codeHash: string, writeHash: string, now: number, until: number) {
-    const r = await this.pool.query(
-      "update public.menulens_sessions set write_hash=$2,state='sharing',share_expires=$4 where code_hash=$1 and state='pending' and pair_expires>$3 returning id",
-      [codeHash, writeHash, now, until],
-    );
-    return !!r.rowCount;
+    const c=await this.pool.connect();
+    try {
+      await c.query("begin");
+      await c.query("select pg_advisory_xact_lock(7710032)");
+      const r=await c.query(
+        "with claimed as (update public.menulens_sessions set write_hash=$2,state='sharing',share_expires=$4 where code_hash=$1 and state='pending' and pair_expires>$3 returning id,owner_id), revoked as (update public.menulens_sessions set state='stopped',write_hash=null,fix=null where owner_id=(select owner_id from claimed) and id<>(select id from claimed) and state='sharing') select id from claimed",
+        [codeHash,writeHash,now,until],
+      );
+      await c.query("commit");
+      return r.rows.length > 0;
+    } catch(error) {await c.query("rollback");throw error;}
+    finally {c.release();}
   }
   async read(hash: string): Promise<Session | null> {
     const { rows } = await this.pool.query(
@@ -182,6 +200,7 @@ export class PostgresStore implements Store {
     return r
       ? {
           id: r.id,
+          ...(r.owner_id ? {ownerId:r.owner_id} : {}),
           codeHash: r.code_hash,
           readHash: r.read_hash,
           writeHash: r.write_hash,
@@ -193,6 +212,12 @@ export class PostgresStore implements Store {
           createdAt: Number(r.created_at),
         }
       : null;
+  }
+  async readForOwner(ownerId: string): Promise<Session | null> {
+    const {rows:[row]} = await this.pool.query(
+      "select read_hash from public.menulens_sessions where owner_id=$1 order by (state='sharing') desc,created_at desc limit 1", [ownerId],
+    );
+    return row ? this.read(row.read_hash) : null;
   }
   async upload(hash: string, fix: Fix, now: number) {
     const r = await this.pool.query(

@@ -84,6 +84,7 @@ try {
     throw new Error("Location privacy/status failed.");
   const places = await call("find_restaurants", {
     query: "Souvla 517 Hayes Street San Francisco",
+    searchMode: "by_name",
   });
   const chosen = places.restaurants?.find(
     (r) => r.id === "ChIJbTB3bKKAhYAR8Yqc6dEIMbQ",

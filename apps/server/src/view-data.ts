@@ -41,6 +41,7 @@ export const viewDataSchema = z.object({
     })
     .optional(),
   restaurants: z.array(restaurantSchema).optional(),
+  lookup: z.object({kind:z.enum(["nearby","by_name"]),locationUpdatedAt:z.number().optional(),radiusMetres:z.number().optional()}).optional(),
   restaurant: restaurantSchema.optional(),
   menuId: z.string().optional(),
   dishes: z.array(explainedSchema).optional(),

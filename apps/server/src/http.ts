@@ -6,7 +6,8 @@ import { readMenuPhoto } from "./photos.js";
 import type { Services } from "./services.js";
 import { landingHtml } from "./landing.js";
 
-export function mountHttp(server: MCPServer, s: Services) {
+export function mountHttp(server: Pick<MCPServer, "app">, s: Services) {
+  if (s.auth) server.app.route("/signin", s.auth.router);
   let windowStart = Date.now(),
     claims = 0;
   server.app.use(
